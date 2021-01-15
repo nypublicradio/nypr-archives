@@ -9,17 +9,18 @@ You can export it as csv (careful with the delimiters!)
 or as xml and play with it 
 as the start of a physical-item manifest.
 
-Change the line 
+This search generates a list of Listening Room reels.
+To do your own search, change the line 
 
-WHERE title LIKE 'Listening Room%'
+      WHERE title LIKE 'Listening Room%'
 
 to whatever series you want to search, for example
 
-WHERE title LIKE 'On the Line'. 
+      WHERE title LIKE 'On the Line'. 
 
 Also, change the line
 
-format_id = 83
+      format_id = 83
 
 to the proper value, e.g. 
 83 	FormatPhysical    1/4 inch audio tape
