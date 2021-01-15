@@ -15,7 +15,23 @@ WHERE title LIKE 'Listening Room%'
 
 to whatever series you want to search, for example
 
-WHERE title LIKE 'On the Line'
+WHERE title LIKE 'On the Line'. 
+
+Also, change the line
+
+format_id = 83
+
+to the proper value, e.g. 
+83 	FormatPhysical    1/4 inch audio tape
+89 	FormatPhysical 	CD-Audio
+92 	FormatPhysical 	DAT
+100 	FormatPhysical 	Lacquer disc
+103 	FormatPhysical 	DBX 700 VHS tape
+107 	FormatPhysical 	Minidisc
+425 	FormatPhysical 	Audio cassette
+427 	FormatDigital 	BWF
+438 	FormatPhysical 	Beta PCM F-1
+
 */
 
 
