@@ -1,0 +1,96 @@
+/*
+This mySQL query 
+run in cavafy
+generates a table that is close to
+the 'Core' schema on BWF MetaEdit,
+as well as a couple of additional fields.
+
+You can export it as csv (careful with the delimiters!)
+or as xml and play with it 
+as the start of a physical-item manifest.
+
+Change the line 
+
+WHERE title LIKE 'Listening Room%'
+
+to whatever series you want to search, for example
+
+WHERE title LIKE 'On the Line'
+*/
+
+
+SELECT
+
+WNYCID.identifier AS originatorReference, 
+CONCAT('US, ', collection.title) AS IARL, 
+locContributors.locRefs AS IART,
+CONCAT_WS(' ; ', locCreators.locRefs, locPublishers.locRefs) AS ICMS,
+assetDates.earliestDate AS ICRD,
+concatGenres.genre AS IGNR,
+locRefs.refs AS IKEY,
+CONCAT(formats.name, ' ', instID.format_identifier) AS IMED, 
+episode.title AS INAM, 
+series.title AS IPRD, 
+abstract.description AS ISBJ,
+CONCAT('https://cavafy.wnyc.org/assets/', assets.uuid) AS ISRC,
+
+assetDates.dates AS allDates, 
+otherIDs.otherIDs AS otherIDs, 
+carrier.format_location AS location,
+formats.name AS format
+
+FROM (SELECT asset_id, title
+FROM titles 
+WHERE title LIKE 'Listening Room%'
+AND title_type_id = 4) AS series
+JOIN assets ON series.asset_id = assets.id
+JOIN (SELECT asset_id, title
+FROM titles 
+WHERE title_type_id = 5) AS episode
+ON series.asset_id = episode.asset_id
+JOIN (SELECT asset_id, title
+FROM titles 
+WHERE title_type_id = 3) AS collection
+ON series.asset_id = collection.asset_id
+LEFT JOIN (SELECT asset_id, description
+FROM descriptions 
+WHERE description_type_id = 1) AS abstract
+ON series.asset_id = abstract.asset_id
+LEFT JOIN (SELECT asset_id, GROUP_CONCAT(ref SEPARATOR ' ; ') AS locRefs FROM creators WHERE ref LIKE '%id.loc.gov%' GROUP BY asset_id) AS locCreators
+ON series.asset_id = locCreators.asset_id
+LEFT JOIN (SELECT asset_id, GROUP_CONCAT(ref SEPARATOR ' ; ') AS locRefs FROM publishers WHERE ref LIKE '%id.loc.gov%' GROUP BY asset_id) AS locPublishers
+ON series.asset_id = locPublishers.asset_id
+LEFT JOIN (SELECT asset_id, GROUP_CONCAT(ref SEPARATOR ' ; ') AS locRefs FROM contributors WHERE ref LIKE '%id.loc.gov%' GROUP BY asset_id) AS locContributors
+ON series.asset_id = locContributors.asset_id
+LEFT JOIN (SELECT GROUP_CONCAT(newGenres.name SEPARATOR ' ; ') AS genre, genreAsset.asset_id AS assetID FROM
+(SELECT * FROM 
+assets_genres) AS genreAsset
+JOIN (SELECT * FROM genres) AS newGenres ON genreAsset.genre_id = newGenres.id GROUP BY genreAsset.asset_id) AS concatGenres
+ON series.asset_id = concatGenres.assetID
+LEFT JOIN (SELECT GROUP_CONCAT(locSubjects.ref SEPARATOR ' ; ') AS refs, subjectAsset.asset_id AS assetID FROM
+(SELECT * FROM 
+assets_subjects) AS subjectAsset
+JOIN (SELECT * FROM subjects WHERE ref LIKE '%id.loc.gov%') AS locSubjects ON subjectAsset.subject_id = locSubjects.id GROUP BY subjectAsset.asset_id) AS locRefs
+ON series.asset_id = locRefs.assetID
+JOIN (SELECT asset_id, GROUP_CONCAT(asset_date) AS dates,
+      MIN(asset_date) AS earliestDate
+FROM asset_dates GROUP BY asset_id) AS assetDates
+ON series.asset_id = assetDates.asset_id
+JOIN (SELECT id, asset_id, format_location, format_id
+FROM instantiations 
+WHERE format_id = 83) AS carrier
+ON series.asset_id = carrier.asset_id
+JOIN formats ON carrier.format_id = formats.id
+JOIN (SELECT asset_id, identifier
+FROM identifiers 
+WHERE identifier_source_id = 2) AS WNYCID
+ON series.asset_id = WNYCID.asset_id
+LEFT JOIN (SELECT asset_id, GROUP_CONCAT(identifier) AS otherIDs
+FROM identifiers 
+WHERE identifier_source_id <> 2
+     GROUP BY asset_id) AS otherIDs
+ON series.asset_id = otherIDs.asset_id
+JOIN (SELECT instantiation_id, format_identifier
+FROM format_ids 
+WHERE format_identifier_source_id = 5) AS instID
+ON carrier.id = instID.instantiation_id
