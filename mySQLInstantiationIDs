@@ -1,0 +1,66 @@
+/*
+This mySQL query 
+run in cavafy
+generates a list of instantiation IDs 
+and their formats, 
+alongside their location 
+and cavafy URL
+
+You can export it as csv (careful with the delimiters!)
+or as xml and play with it 
+as the start of a physical-item manifest.
+
+This search generates a list of Listening Room reels.
+To do your own search, change the line 
+
+      WHERE title LIKE 'Listening Room%'
+
+to whatever series you want to search, for example
+
+      WHERE title LIKE 'On the Line'. 
+
+Also, change the line
+
+      format_id = 83
+
+(which corresponds to 1/4 inch audio tape)
+
+to the proper value, e.g. 
+
+83 	FormatPhysical    1/4 inch audio tape
+89 	FormatPhysical 	CD-Audio
+92 	FormatPhysical 	DAT
+100 	FormatPhysical 	Lacquer disc
+103 	FormatPhysical 	DBX 700 VHS tape
+107 	FormatPhysical 	Minidisc
+425 	FormatPhysical 	Audio cassette
+427 	FormatDigital 	BWF
+438 	FormatPhysical 	Beta PCM F-1
+
+*/
+
+
+SELECT
+
+series.title AS series,
+instID.format_identifier AS instantiationID, 
+formats.name AS format2,
+carrier.format_location AS location,
+CONCAT('https://cavafy.wnyc.org/assets/', assets.uuid) AS URL
+
+FROM (SELECT asset_id, title
+FROM titles 
+WHERE title LIKE 'Listening Room%'
+AND title_type_id = 4) AS series
+JOIN assets ON series.asset_id = assets.id
+
+JOIN (SELECT id, asset_id, format_location, format_id
+FROM instantiations 
+WHERE format_id = 83) AS carrier
+ON series.asset_id = carrier.asset_id
+JOIN formats ON carrier.format_id = formats.id
+
+JOIN (SELECT instantiation_id, format_identifier
+FROM format_ids 
+WHERE format_identifier_source_id = 5) AS instID
+ON carrier.id = instID.instantiation_id
