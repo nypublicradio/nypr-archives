@@ -46,7 +46,7 @@ series.title AS series,
 instID.format_identifier AS instantiationID, 
 formats.name AS format2,
 carrier.format_location AS location,
-CONCAT('https://cavafy.wnyc.org/assets/', assets.uuid) AS URL
+CONCAT('https://cavafy.wnyc.org/assets/', assets.uuid) AS url
 
 FROM (SELECT asset_id, title
 FROM titles 
