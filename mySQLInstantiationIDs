@@ -1,16 +1,23 @@
 /*
 This mySQL query 
 run in cavafy
-generates a list of instantiation IDs 
+generates a list of 
+instantiation IDs 
 and their formats, 
-alongside their location 
-and cavafy URL
+alongside their location,
+dates, 
+other IDs,
+cavafy URL
+and other info.
 
-You can export it as csv (careful with the delimiters!)
+You can export it as csv
 or as xml and play with it 
 as the start of a physical-item manifest.
 
-This search generates a list of Listening Room reels.
+For example, you can import the data to a spreadsheet 
+such as rdfMasterSpreadsheet.
+
+The example below generates a list of Listening Room reels.
 To do your own search, change the line 
 
       WHERE title LIKE 'Listening Room%'
@@ -39,28 +46,59 @@ to the proper value, e.g.
 
 */
 
-
 SELECT
 
-series.title AS series,
-instID.format_identifier AS instantiationID, 
-formats.name AS format2,
+instID.format_identifier AS instantiationID,
+formats.name as format,
 carrier.format_location AS location,
-CONCAT('https://cavafy.wnyc.org/assets/', assets.uuid) AS url
+episode.title AS title,
+assetDates.earliestDate AS earliestDate,
+
+CONCAT('https://cavafy.wnyc.org/assets/', assets.uuid) AS url,
+series.title AS series,
+collection.title AS collection, 
+
+assetDates.dates AS allDates, 
+CONCAT_WS(', ', otherAssetIDs.otherIDs, otherInstIDs.otherIDs) AS otherIDs
 
 FROM (SELECT asset_id, title
 FROM titles 
 WHERE title LIKE 'Listening Room%'
 AND title_type_id = 4) AS series
 JOIN assets ON series.asset_id = assets.id
+JOIN (SELECT asset_id, title
+FROM titles 
+WHERE title_type_id = 5) AS episode
+ON series.asset_id = episode.asset_id
+JOIN (SELECT asset_id, title
+FROM titles 
+WHERE title_type_id = 3) AS collection
+ON series.asset_id = collection.asset_id
 
+LEFT JOIN (SELECT asset_id, GROUP_CONCAT(asset_date) AS dates,
+      MIN(asset_date) AS earliestDate
+FROM asset_dates GROUP BY asset_id) AS assetDates
+ON series.asset_id = assetDates.asset_id
 JOIN (SELECT id, asset_id, format_location, format_id
 FROM instantiations 
 WHERE format_id = 83) AS carrier
 ON series.asset_id = carrier.asset_id
 JOIN formats ON carrier.format_id = formats.id
 
-JOIN (SELECT instantiation_id, format_identifier
+JOIN (SELECT instantiation_id, format_identifier, format_identifier_source_id
 FROM format_ids 
 WHERE format_identifier_source_id = 5) AS instID
 ON carrier.id = instID.instantiation_id
+
+LEFT JOIN (SELECT asset_id, GROUP_CONCAT(identifier) AS otherIDs
+FROM identifiers 
+WHERE identifier_source_id <> 2
+     GROUP BY asset_id) AS otherAssetIDs
+ON series.asset_id = otherAssetIDs.asset_id
+
+LEFT JOIN (SELECT instantiation_id, GROUP_CONCAT(format_identifier) AS otherIDs, format_identifier_source_id
+FROM format_ids 
+WHERE format_identifier_source_id <> 5) AS otherInstIDs
+ON carrier.id = instID.instantiation_id
+
+ORDER BY assetDates.earliestDate
